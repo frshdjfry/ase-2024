@@ -1,3 +1,5 @@
+mod ring_buffer;
+
 use std::{fs::File, io::Write};
 use hound;
 fn show_info() {
