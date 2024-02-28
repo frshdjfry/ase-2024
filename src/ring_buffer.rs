@@ -95,6 +95,22 @@ impl<T: Copy + Default> RingBuffer<T> {
     }
 }
 
+impl RingBuffer<f32> {
+    pub fn get_frac(&self, offset: f32) -> f32 {
+        if self.size == 0 {
+            return 0.0;
+        }
+
+        let integral_part = offset.floor() as usize;
+        let fractional_part = offset.fract();
+
+        let floor_value = self.get(integral_part);
+        let ceil_value = self.get(integral_part + 1);
+
+        floor_value + fractional_part * (ceil_value - floor_value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::RingBuffer;
@@ -169,5 +185,42 @@ mod tests {
         buffer.push(5);
         assert_eq!(buffer.get(0), 1);
         assert_eq!(buffer.get(4), 5);
+    }
+
+    #[test]
+    fn test_get_frac() {
+        let mut buffer = RingBuffer::new(5);
+        for i in 0..5 {
+            buffer.push(i as f32);
+        }
+
+        // Test interpolation between two values
+        assert_eq!(buffer.get_frac(1.5), 1.5);
+
+        // Test with offset 0 (should return the first element)
+        assert_eq!(buffer.get_frac(0.0), 0.0);
+
+        // Test at the end of the buffer (should wrap around and interpolate)
+        assert_eq!(buffer.get_frac(4.5), 2.0);
+
+        // Test beyond the end of the buffer (should wrap around and interpolate, similar to 0.5)
+        assert_eq!(buffer.get_frac(5.5), 0.5);
+    }
+
+    #[test]
+    fn test_get_frac_empty_buffer() {
+        let buffer: RingBuffer<f32> = RingBuffer::new(5);
+        // Test with an empty buffer
+        assert_eq!(buffer.get_frac(1.5), 0.0);
+    }
+
+    #[test]
+    fn test_get_frac_negative_offset() {
+        let mut buffer = RingBuffer::new(5);
+        for i in 0..5 {
+            buffer.push(i as f32);
+        }
+        // Test with a negative offset (should return 0.0 or some default value)
+        assert_eq!(buffer.get_frac(-1.0), 0.0);
     }
 }
