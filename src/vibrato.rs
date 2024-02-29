@@ -1,6 +1,11 @@
+//! The `Vibrato` module provides functionality to apply a vibrato effect to audio signals.
+//! It utilizes a low-frequency oscillator (LFO) to modulate the delay time of the audio signal,
+//! creating a varying pitch effect.
+
 use crate::lfo::LFO;
 use crate::ring_buffer::RingBuffer;
 
+/// Represents the Vibrato effect with configurable parameters.
 pub struct Vibrato {
     delay_line: RingBuffer<f32>,
     lfo: LFO,
@@ -9,6 +14,7 @@ pub struct Vibrato {
     depth: f32,
 }
 
+/// Parameters that can be adjusted in the `Vibrato` effect.
 enum VibratoParam {
     SampleRate,
     Delay,
@@ -17,6 +23,20 @@ enum VibratoParam {
 }
 
 impl Vibrato {
+    /// Creates a new `Vibrato` instance with specified parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `sample_rate` - The sample rate of the audio signal in Hz.
+    /// * `delay` - The base delay time for the vibrato effect in seconds.
+    /// * `depth` - The depth of the vibrato modulation in seconds.
+    /// * `mod_freq` - The frequency of the modulation oscillator in Hz.
+    /// * `amplitude` - The amplitude of the modulation oscillator.
+    /// * `wavetable_size` - The size of the wavetable for the LFO.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `delay` is less than the `depth`, as this would result in invalid modulation.
     pub fn new(
         sample_rate: f32,
         delay: f32,
@@ -41,10 +61,28 @@ impl Vibrato {
         })
     }
 
+    /// Processes an input buffer of audio samples and applies the vibrato effect.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - A slice of input samples to process.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<f32>` containing the processed audio samples with the vibrato effect applied.
     pub fn process(&mut self, input: &[f32]) -> Vec<f32> {
         input.iter().map(|&x| self.process_sample(x)).collect()
     }
 
+    /// Processes a single audio sample and applies the vibrato effect.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_sample` - The input sample to process.
+    ///
+    /// # Returns
+    ///
+    /// The processed sample with the vibrato effect applied.
     fn process_sample(&mut self, input_sample: f32) -> f32 {
         self.delay_line.push(input_sample);
 
@@ -55,34 +93,50 @@ impl Vibrato {
         output
     }
 
+    /// Sets the specified parameter to a new value.
+    ///
+    /// # Arguments
+    ///
+    /// * `param` - The `VibratoParam` to set.
+    /// * `value` - The new value for the parameter.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if setting the parameter would result in invalid configuration,
+    /// such as setting the `depth` greater than the `delay`.
     pub fn set_param(&mut self, param: VibratoParam, value: f32) -> Result<(), String> {
         match param {
             VibratoParam::SampleRate => {
                 self.sample_rate = value;
-
             }
             VibratoParam::Delay => {
                 if value < self.depth {
                     return Err("Delay must be greater than or equal to depth".to_string());
                 }
                 self.delay = value;
-
             }
             VibratoParam::Depth => {
                 if value > self.delay {
                     return Err("Depth must be less than or equal to delay".to_string());
                 }
                 self.depth = value;
-
             }
             VibratoParam::ModulationFrequency => {
-
                 self.lfo.set_frequency(value);
             }
         }
         Ok(())
     }
 
+    /// Retrieves the current value of the specified parameter.
+    ///
+    /// # Arguments
+    ///
+    /// * `param` - The `VibratoParam` to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// The current value of the specified parameter.
     pub fn get_param(&self, param: VibratoParam) -> f32 {
         match param {
             VibratoParam::SampleRate => self.sample_rate,
