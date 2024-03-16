@@ -4,11 +4,11 @@
 
 use crate::lfo::LFO;
 use crate::ring_buffer::RingBuffer;
-const WAVETABLESIZE: usize = 0;
+const WAVETABLESIZE: usize = 1024;
 /// Represents the Vibrato effect with configurable parameters.
 pub struct Vibrato {
-    delay_line: RingBuffer<f32>,
-    lfo: LFO,
+    delay_lines: Vec<RingBuffer<f32>>,
+    lfos: Vec<LFO>,
     sample_rate: f32,
     delay: f32,
     depth: f32,
@@ -43,6 +43,7 @@ impl Vibrato {
         depth: f32,
         mod_freq: f32,
         amplitude: f32,
+        channels: usize,
     ) -> Result<Self, String> {
         if delay < depth {
             return Err("Delay must be greater than or equal to depth".to_string());
@@ -52,8 +53,8 @@ impl Vibrato {
         let total_size = 2 + delay_samples + depth_samples * 2;
 
         Ok(Vibrato {
-            delay_line: RingBuffer::new(total_size),
-            lfo: LFO::new(mod_freq, amplitude, sample_rate, WAVETABLESIZE),
+            delay_lines: (0..channels).map(|_| RingBuffer::new(total_size)).collect(),
+            lfos: (0..channels).map(|_| LFO::new(mod_freq, amplitude, sample_rate, WAVETABLESIZE)).collect(),
             sample_rate,
             delay,
             depth,
@@ -69,8 +70,10 @@ impl Vibrato {
     /// # Returns
     ///
     /// A `Vec<f32>` containing the processed audio samples with the vibrato effect applied.
-    pub fn process(&mut self, input: &[f32]) -> Vec<f32> {
-        input.iter().map(|&x| self.process_sample(x)).collect()
+    pub fn process(&mut self, input: &[Vec<f32>]) -> Vec<Vec<f32>> {
+        input.iter().enumerate().map(|(channel, samples)| {
+            samples.iter().map(|&sample| self.process_sample(sample, channel)).collect()
+        }).collect()
     }
 
     /// Processes a single audio sample and applies the vibrato effect.
@@ -82,12 +85,15 @@ impl Vibrato {
     /// # Returns
     ///
     /// The processed sample with the vibrato effect applied.
-    fn process_sample(&mut self, input_sample: f32) -> f32 {
-        self.delay_line.push(input_sample);
+    fn process_sample(&mut self, input_sample: f32, channel: usize) -> f32 {
+        let delay_line = &mut self.delay_lines[channel];
+        let lfo = &mut self.lfos[channel];
 
-        let modulation = self.lfo.tick();
+        delay_line.push(input_sample);
+
+        let modulation = lfo.tick();
         let tap_point = 1.0 + self.delay * self.sample_rate + self.depth * self.sample_rate * modulation;
-        let output = self.delay_line.get_frac(tap_point);
+        let output = delay_line.get_frac(tap_point);
 
         output
     }
@@ -121,7 +127,9 @@ impl Vibrato {
                 self.depth = value;
             }
             VibratoParam::ModulationFrequency => {
-                self.lfo.set_frequency(value);
+                for lfo in &mut self.lfos{
+                    lfo.set_frequency(value);
+                }
             }
         }
         Ok(())
@@ -141,7 +149,7 @@ impl Vibrato {
             VibratoParam::SampleRate => self.sample_rate,
             VibratoParam::Delay => self.delay,
             VibratoParam::Depth => self.depth,
-            VibratoParam::ModulationFrequency => self.lfo.get_frequency(),
+            VibratoParam::ModulationFrequency => self.lfos[0].get_frequency(),
         }
     }
 }
