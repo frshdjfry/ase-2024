@@ -35,7 +35,7 @@ fn main() {
     let output_file = File::create(output_path).expect("Failed to create output file");
     let writer = BufWriter::new(output_file);
     let mut wav_writer = WavWriter::new(writer, spec).expect("Failed to create WAV writer");
-    let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0, 1024).expect("Failed to create Vibrato");
+    let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0).expect("Failed to create Vibrato");
     let buffer_size = 1024;
     let mut samples = wav_reader.samples::<i16>();
     let mut buffer = Vec::with_capacity(buffer_size);

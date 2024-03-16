@@ -4,7 +4,7 @@
 
 use crate::lfo::LFO;
 use crate::ring_buffer::RingBuffer;
-
+const WAVETABLESIZE: usize = 0;
 /// Represents the Vibrato effect with configurable parameters.
 pub struct Vibrato {
     delay_line: RingBuffer<f32>,
@@ -32,7 +32,7 @@ impl Vibrato {
     /// * `depth` - The depth of the vibrato modulation in seconds.
     /// * `mod_freq` - The frequency of the modulation oscillator in Hz.
     /// * `amplitude` - The amplitude of the modulation oscillator.
-    /// * `wavetable_size` - The size of the wavetable for the LFO.
+    /// * `WAVETABLESIZE` - The size of the wavetable for the LFO.
     ///
     /// # Errors
     ///
@@ -43,7 +43,6 @@ impl Vibrato {
         depth: f32,
         mod_freq: f32,
         amplitude: f32,
-        wavetable_size: usize,
     ) -> Result<Self, String> {
         if delay < depth {
             return Err("Delay must be greater than or equal to depth".to_string());
@@ -54,7 +53,7 @@ impl Vibrato {
 
         Ok(Vibrato {
             delay_line: RingBuffer::new(total_size),
-            lfo: LFO::new(mod_freq, amplitude, sample_rate, wavetable_size),
+            lfo: LFO::new(mod_freq, amplitude, sample_rate, WAVETABLESIZE),
             sample_rate,
             delay,
             depth,
@@ -153,17 +152,17 @@ mod tests {
 
 
     fn create_default_vibrato() -> Vibrato {
-        Vibrato::new(44100.0, 0.005, 0.002, 5.0, 1.0, 1024).unwrap()
+        Vibrato::new(44100.0, 0.005, 0.002, 5.0, 1.0).unwrap()
     }
 
     #[test]
     fn test_new_vibrato_success() {
-        assert!(Vibrato::new(44100.0, 0.005, 0.002, 5.0, 1.0, 1024).is_ok());
+        assert!(Vibrato::new(44100.0, 0.005, 0.002, 5.0, 1.0).is_ok());
     }
 
     #[test]
     fn test_new_vibrato_failure() {
-        assert!(Vibrato::new(44100.0, 0.002, 0.005, 5.0, 1.0, 1024).is_err());
+        assert!(Vibrato::new(44100.0, 0.002, 0.005, 5.0, 1.0).is_err());
     }
 
     #[test]
@@ -191,7 +190,7 @@ mod tests {
         let depth = 0.0;
         let mod_freq = 5.0;
 
-        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 0.0, 1024).unwrap();
+        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 0.0).unwrap();
         let input = vec![1.0; 441];
         let expected_delay_samples = (delay * sample_rate) as usize;
 
@@ -211,7 +210,7 @@ mod tests {
         let depth = 0.002;
         let mod_freq = 5.0;
 
-        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0, 1024).unwrap();
+        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0).unwrap();
         let input = vec![0.5; 441];
 
         let output = vibrato.process(&input);
@@ -230,7 +229,7 @@ mod tests {
         let depth = 0.002;
         let mod_freq = 5.0;
 
-        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0, 1024).unwrap();
+        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0).unwrap();
 
         for &size in &[128, 256, 512, 1024] {
             let input = vec![1.0; size];
@@ -247,7 +246,7 @@ mod tests {
         let depth = 0.002;
         let mod_freq = 5.0;
 
-        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0, 1024).unwrap();
+        let mut vibrato = Vibrato::new(sample_rate, delay, depth, mod_freq, 1.0).unwrap();
         let input = vec![0.0; 1024];
 
         let output = vibrato.process(&input);
@@ -264,8 +263,8 @@ mod tests {
         let depth1 = 0.001;
         let depth2 = 0.002;
 
-        let mut vibrato1 = Vibrato::new(sample_rate, delay, depth1, mod_freq, 1.0, 1024).unwrap();
-        let mut vibrato2 = Vibrato::new(sample_rate, delay, depth2, mod_freq, 1.0, 1024).unwrap();
+        let mut vibrato1 = Vibrato::new(sample_rate, delay, depth1, mod_freq, 1.0).unwrap();
+        let mut vibrato2 = Vibrato::new(sample_rate, delay, depth2, mod_freq, 1.0).unwrap();
 
         let input = vec![1.0; 1024];
         let output1 = vibrato1.process(&input);
